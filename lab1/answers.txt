@@ -1,0 +1,63 @@
+## Place your answers here.
+
+Exercise 2:
+------------------------
+
+exploit-2a.py
+exploit-2a takes advantage of the vulnerability at [zookd.c:70]. Specifically, it overflows the buffer of the variable 'reqpath',
+overwriting the return address. By sending a URI longer than the size of 'reqpath' (and adding a bit more for other local variables and 
+the base pointer), 'reqpath' is overflowed and the return address is overwritten. By putting garbage in the return address, the program
+segfaults.
+
+
+exploit-2b.py
+exploit-2b takes advantage of the vulnerability at [http.c:282]. Specifically, it overflows the buffer of the variable 'pn', overwriting
+the function pointer '*handler'. By passing a URI longer than the size of 'pn' (1024), we can the function pointers address. When the 
+program attempts to use this function pointer, it is redirected to memory that it doesn't have access to (in this case I used 0x0... e.g.
+very low memory addresses). As it does not have access, the program segfaults.
+
+
+
+Exercise 3:
+--------------------------
+
+exploit-3.py takes advantage of the vulnerability at [zookd.c:70] (the same exploit that was explored in exploit-2a). I had already found 
+the addresses of the buffer 'reqpath' and the base pointer (%ebp). With this information, I constructed the following stack:
+
+				Bottom of Stack (High Memory Addresses)
+
+				| buffer address + 1 | 
+location of return address ->	|--------------------| <- &ebp + 4 
+				|	zzzz         |
+				|--------------------| <- &ebp (0xbffff618)
+				|zzzzzzzzzzzzzz......|
+				|--------------------|
+				|shellcode	     |
+				|--------------------|
+				|	  /	     |
+	buffer address ->	|--------------------| <- %esp (0xbfffee08)
+
+				Top of Stack (Low Memory Addresses)
+
+First, I placed a '/' in the buffer. This portion was necessary as the program checks if the URI is valid. Next, I placed the shellcode.
+Once all is said and done, we need the return address of this stack frame to have the address, inside the buffer, that contains the 
+shellcode. Next, I filled the remaining space between the address of the shellcode and the return address with a
+random character. Finally, the last 4 bytes, which contain the return address, were overwritten with the address in the buffer where the 
+shellcode was placed (in this case, it was 0xbfffee09).
+
+Changes were also made to shellcode.S to get the correct functionality. Only three changes were made to the origin shellcode:
+	1) #define STRING "/bin/sh" --> #define STRING "/home/httpd/grades.txt"
+	2) #define STRLEN 7 --> #define STRLEN 22
+	3) movb $SYS_execve, %al --> movb $SYS_unlink, %al
+The new shellcode unlinks the file "grades.txt" in "/home/httpd", rather than opening up a shell as it originally did. In refernence
+to the note, I'm unsure why the fact that unlink is syscall #10 matters in this case. 
+
+I had some problems getting everything to work. Specifically, When calculating how many nonsense characters I needed to include, I 
+subtracted the length of the shellcode after being quoted. I'm not sure why, but calling 'len()' on the urllib.quote version of the 
+shellcode would result in a different length than when it was called on its String version. This error resulted in either overshooting 
+or undershooting the return address, and therefore not running the shellcode.
+
+The other vulnerabilities I found in Exercise 1 can be exploited in a similar manner. They all allow for the overwriting of the function's
+return address and therefore should be subject to a similar exploit. Obviously, they would require different URI structures to ensure that
+the address of the shellcode properly fell into the return address. The exploit at [http.c:282] could be exploited in a different way. 
+Rather than overwriting the return address, we could overwrite the function pointer as another method of gaining control of the program.

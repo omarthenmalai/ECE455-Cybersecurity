@@ -1,0 +1,71 @@
+#
+# [file:#lines]
+# desc
+#
+
+#1
+[zookd.c:70]
+Local variable 'reqpath[2048]' can be overflowed by sending a long URI. The function 'http_request_line' uses another function 'url_decode',
+which copies the values from one buffer to another. In this case, it copies the values from 'sp1', which represents the URI, to the buffer
+'reqpath'. As 'url_decode' does not implement bounds checking, a sufficiently long URI could overflow the buffer of 'reqpath'. This 
+buffer overflow is preventable with stack canaries.
+
+70	if((errmsg = http_request_line(fd, reqpath, env, &env_len)))
+
+
+#2
+[http.c:159]
+The local variable 'value[512]' is filled with 'sp' by the function 'url_decode'. 'url_decode' takes the value of 'sp' and fills
+it into the buffer 'value'. 'sp' represents the header field values for the given http request. As the routine in 'url-decode' does
+not implement bounds checking, we can cause a buffer overflow by sending a request with a header field longer than 512 bytes. If stack 
+canaries were present, this exploit would likely not work.
+
+116	const char *http_request_headers(int fd)
+		...
+120		char value[512];
+		...
+159		url_decode(value, sp);
+
+
+#3
+[http.c:282]
+The buffer 'pn[1024]' is filled with the variable 'name' by the unsafe function strcat. 'name' refers to the request url for a 
+given HTTP request. As strcat does not have bounds checking, we could send a larger request url and cause the buffer overflow. This 
+overflow would first overwrite the function pointer '*handler', and therefore could theoretically get around stack canaries.
+
+
+273	void http_serve(int fd, const char *name)
+	...
+275		void (*handler)(int, const char *) = http_serve_none;
+276		char pn[1024];
+		...
+282		strcat(pn, name)
+
+
+#4
+[http.c:360]
+The buffer 'name[1024]' is filled with the value of 'getenv("SCRIPT NAME") when the function 'dir_join' uses the unsafe function strcpy.
+As strcpy does not perform bounds checks, we could pass a long "SCRIPT NAME" environment variable and overflow the buffer. This exploit
+would not get around stack canaries, as there is nothing of value to overwrite below 'name' on the stack.
+
+350	void http_serve_directory(int fd, const char *pn)
+	...
+353		char name[1024];
+		...
+360		dir_join(name, getenv("SCRIPT NAME"), indices[i])	
+
+
+#5
+[http.c:165]
+The buffer 'envvar' has a size of 512 bytes. 'envvar' is filled with the characters held in 'buf', which currently holds the headers for
+the given request. As 'sprintf' does not perform bounds checking, and 'buf' has a size of 8192 bytes, any header longer than 512 will be
+written into 'envvar' and overflow the buffer. In fact, given the format string "HTTP_%s", any header longer than 507 bytes would overflow 
+the buffer. As the variable 'value[512]' is directly below 'envvar' on the stack, its possible that overflowing 'envvar' could allow you 
+to change the values in 'value'. Aside from that, there doesn't seem to be anyway that this exploit would allow an attacker to take control
+if stack canaries were present.
+
+116	const char *http_request_headers(int fd)
+    	...
+121    		char envvar[512];
+    		...
+165    		sprintf(envvar, "HTTP_%s", buf);
